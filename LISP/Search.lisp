@@ -1,0 +1,38 @@
+(defun a-star (graph start goal heuristic)
+  (let ((open (list (list start 0 (funcall heuristic start))))
+        (came-from (make-hash-table :test #'equal))
+        (g-score (make-hash-table :test #'equal))
+        (f-score (make-hash-table :test #'equal)))
+    (setf (gethash start g-score) 0)
+    (setf (gethash start f-score) (funcall heuristic start))
+    (loop while open do
+      (let* ((current (car (sort open #'< :key #'second))))
+        (setf open (cdr open))
+        (let ((node (car current))
+              (current-f (second current)))
+          (if (equal node goal)
+              (return-from a-star (reconstruct-path came-from start goal)))
+          (dolist (neighbor (cdr (assoc node graph)))
+            (let* ((tentative-g-score (+ (gethash node g-score 0) 1))
+                   (tentative-f-score (+ tentative-g-score (funcall heuristic neighbor))))
+              (when (or (not (gethash neighbor g-score))
+                        (< tentative-g-score (gethash neighbor g-score)))
+                (setf (gethash neighbor g-score) tentative-g-score)
+                (setf (gethash neighbor f-score) tentative-f-score)
+                (push (list neighbor tentative-g-score tentative-f-score) open)
+                (setf (gethash neighbor came-from) node)))))))))
+
+(defun reconstruct-path (came-from start goal)
+  (let ((path (list goal)))
+    (loop while (not (equal (car path) start)) do
+      (push (gethash (car path) came-from) path))
+    path))
+
+;; Example usage:
+(let ((graph '((A (B C))
+               (B (A D E))
+               (C (A F))
+               (D (B))
+               (E (B F))
+               (F (C E)))))
+  (print (a-star graph 'A 'F #'(lambda (x) 0))))  ;; Should print the path
